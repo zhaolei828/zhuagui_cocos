@@ -8,10 +8,10 @@
 ## 📋 Requirements
 
 ### Core Requirements
-- [R₁] 2D横版游戏玩法
+- [R₁] 2D自由移动游戏玩法（玩家可向所有方向移动）
 - [R₂] 键盘控制角色移动（方向键/WASD）
 - [R₃] 摄像机跟随玩家移动
-- [R₄] 多层背景视差滚动效果
+- [R₄] 全方向无限延伸的平铺背景系统
 - [R₅] 新手村场景背景（傍晚氛围）
 
 ### Technical Requirements

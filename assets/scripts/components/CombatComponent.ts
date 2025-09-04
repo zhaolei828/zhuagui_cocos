@@ -56,23 +56,16 @@ export class CombatComponent extends Component {
      * 执行攻击
      */
     attack(target?: Node): boolean {
-        console.log(`🗡️ ${this.node.name} 尝试攻击`);
-        console.log(`⏰ 可以攻击: ${this.canAttack}`);
-        console.log(`❤️ 已死亡: ${this.healthComponent ? this.healthComponent.isDead : '无血量组件'}`);
-        
         if (!this.canAttack || (this.healthComponent && this.healthComponent.isDead)) {
-            console.log('❌ 攻击被阻止：冷却中或已死亡');
             return false;
         }
         
         // 如果指定了目标，攻击特定目标
         if (target) {
-            console.log(`🎯 攻击指定目标: ${target.name}`);
             return this.attackTarget(target);
         }
         
         // 否则攻击范围内的敌人
-        console.log('🔍 搜索范围内的敌人');
         return this.attackInRange();
     }
     
@@ -95,11 +88,9 @@ export class CombatComponent extends Component {
         // 寻找最近的敌人
         const nearestEnemy = this.findNearestEnemy();
         if (nearestEnemy) {
-            console.log(`🔍 找到最近的敌人: ${nearestEnemy.name}`);
             return this.attackTarget(nearestEnemy);
         }
         
-        console.log('🤷‍ 攻击范围内没有敌人');
         return false;
     }
     
@@ -161,7 +152,6 @@ export class CombatComponent extends Component {
         };
         
         searchNode(scene);
-        console.log(`🎯 ${this.node.name} 找到 ${enemies.length} 个目标: ${enemies.map(e => e.name).join(', ')}`);
         return enemies;
     }
     
@@ -176,7 +166,6 @@ export class CombatComponent extends Component {
         
         const success = targetHealth.takeDamage(this.attackDamage);
         if (success) {
-            console.log(`⚔️ ${this.node.name} 攻击 ${target.name}，造成 ${this.attackDamage} 点伤害`);
             this.lastAttackTime = Date.now() / 1000;
             
             // 播放攻击音效
@@ -199,7 +188,6 @@ export class CombatComponent extends Component {
      */
     private playAttackEffect(target: Node): void {
         // TODO: 添加攻击特效和音效
-        console.log(`✨ 播放攻击特效`);
     }
     
     /**
@@ -211,7 +199,6 @@ export class CombatComponent extends Component {
         // 检查是否是攻击目标
         if (this.isValidTarget(otherNode)) {
             // 可以在这里处理近身攻击
-            console.log(`🎯 ${this.node.name} 接触到目标 ${otherNode.name}`);
         }
     }
     

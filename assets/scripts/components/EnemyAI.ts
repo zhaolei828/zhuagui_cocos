@@ -68,22 +68,15 @@ export class EnemyAI extends Component {
         
         // 动态查找玩家
         if (!this.player) {
-            console.log(`🤖 ${this.node.name} AI 正在动态查找玩家...`);
             this.player = this.findPlayerNode();
-            if (this.player) {
-                console.log(`✅ ${this.node.name} AI 成功找到玩家: ${this.player.name}`);
-            } else {
-                console.error(`❌ ${this.node.name} AI 无法找到玩家节点`);
+            if (!this.player) {
+                console.error(`❌ AI 无法找到玩家节点`);
             }
-        } else {
-            console.log(`✅ ${this.node.name} AI 已有玩家引用: ${this.player.name}`);
         }
         
         // 开始巡逻
         this.setState(AIState.PATROL);
         this.generatePatrolTarget();
-        
-        console.log(`🤖 ${this.node.name} AI初始化完成`);
     }
     
     update(deltaTime: number) {
@@ -131,20 +124,15 @@ export class EnemyAI extends Component {
      */
     private detectPlayer(): void {
         if (!this.player || this.currentState === AIState.DEAD) {
-            if (!this.player) {
-                console.log(`❌ ${this.node.name} 没有玩家引用`);
-            }
             return;
         }
         
         const distance = this.getDistanceToPlayer();
-        console.log(`📏 ${this.node.name} 到玩家距离: ${distance.toFixed(1)}, 视野: ${this.sightRange}`);
         
         // 在视野范围内发现玩家
         if (distance <= this.sightRange && this.currentState !== AIState.CHASE && this.currentState !== AIState.ATTACK) {
             this.target = this.player;
             this.setState(AIState.CHASE);
-            console.log(`👁️ ${this.node.name} 发现玩家，开始追击 (距离: ${distance.toFixed(1)})`);
         }
         
         // 进入攻击范围
@@ -215,7 +203,6 @@ export class EnemyAI extends Component {
                 this.target = null!;
                 this.setState(AIState.PATROL);
                 this.generatePatrolTarget();
-                console.log(`🔄 ${this.node.name} 失去目标，返回巡逻`);
             } else {
                 this.moveTowards(this.lastPlayerPosition, deltaTime);
             }
@@ -226,14 +213,9 @@ export class EnemyAI extends Component {
      * 攻击行为
      */
     private attackBehavior(deltaTime: number): void {
-        console.log(`⚔️ ${this.node.name} 攻击行为 - 目标: ${this.target ? this.target.name : '无'}`);
-        
         if (this.combatComponent && this.combatComponent.canAttack) {
             if (this.target && this.target === this.player) {
-                console.log(`✅ ${this.node.name} 攻击玩家: ${this.target.name}`);
                 this.combatComponent.attack(this.target);
-            } else {
-                console.log(`❌ ${this.node.name} 目标不是玩家，取消攻击`);
             }
         }
         
@@ -323,7 +305,6 @@ export class EnemyAI extends Component {
     private setState(newState: AIState): void {
         if (this.currentState === newState) return;
         
-        console.log(`🤖 ${this.node.name} 状态变化: ${this.currentState} -> ${newState}`);
         this.currentState = newState;
         this.stateTimer = 0;
     }
@@ -345,47 +326,32 @@ export class EnemyAI extends Component {
      * 查找玩家节点
      */
     private findPlayerNode(): Node | null {
-        console.log('🔍 AI查找玩家节点...');
-        
-        // 尝试直接路径查找
         const scene = this.node.scene;
-        console.log(`🎮 场景名称: ${scene.name}`);
         
         // 方法1: 尝试硬编码路径 Canvas/GameRoot/Player
         const canvas = scene.getChildByName('Canvas');
         if (canvas) {
-            console.log('✅ 找到Canvas节点');
             const gameRoot = canvas.getChildByName('GameRoot');
             if (gameRoot) {
-                console.log('✅ 找到GameRoot节点');
                 const player = gameRoot.getChildByName('Player');
                 if (player) {
-                    console.log(`✅ AI成功找到玩家: ${player.name} (硬编码路径)`);
                     return player;
                 }
             }
         }
         
         // 方法2: 递归查找玩家节点
-        const searchNode = (node: Node, depth: number = 0): Node | null => {
+        const searchNode = (node: Node): Node | null => {
             if (node.name === 'Player' || node.name.includes('Player') || node.name === 'player') {
-                console.log(`✅ AI找到玩家节点: ${node.name} (深度: ${depth})`);
                 return node;
             }
             for (const child of node.children) {
-                const found = searchNode(child, depth + 1);
+                const found = searchNode(child);
                 if (found) return found;
             }
             return null;
         };
         
-        console.log(`🎮 开始从场景根节点搜索: ${scene.name}`);
-        const player = searchNode(scene);
-        
-        if (!player) {
-            console.error('❌ AI未能找到玩家节点');
-        }
-        
-        return player;
+        return searchNode(scene);
     }
 }

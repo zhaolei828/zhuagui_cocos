@@ -82,7 +82,6 @@ export class TileMapRenderer extends Component {
         let transform = this.tileContainer.getComponent(UITransform);
         if (!transform) {
             transform = this.tileContainer.addComponent(UITransform);
-            console.log('✅ 为MapRoot添加了UITransform组件');
         }
         
         // 设置容器大小
@@ -91,7 +90,6 @@ export class TileMapRenderer extends Component {
         // 确保在正确的层级
         this.tileContainer.layer = 1073741824; // DEFAULT层
         
-        console.log(`📦 地图容器设置完成，层级: ${this.tileContainer.layer}`);
     }
     
     /**
@@ -122,7 +120,6 @@ export class TileMapRenderer extends Component {
             }
         }
         
-        console.log(`🏊‍♂️ 瓦片对象池初始化完成`);
     }
     
     /**
@@ -151,8 +148,6 @@ export class TileMapRenderer extends Component {
         // 渲染房间内容
         this.renderRoomContent();
         
-        console.log(`🎨 地图渲染完成，共渲染 ${this.activeNodes.length} 个瓦片`);
-        console.log(`📍 地图容器层级: ${this.tileContainer.layer}`);
     }
     
     /**
@@ -367,7 +362,6 @@ export class TileMapRenderer extends Component {
         const healthComponent = enemyNode.addComponent(HealthComponent);
         healthComponent.maxHealth = 60;
         healthComponent.onDeath = () => {
-            console.log(`💀 敌人 ${enemyNode.name} 死亡`);
             // 可以在这里添加掉落道具逻辑
         };
         
@@ -386,10 +380,6 @@ export class TileMapRenderer extends Component {
         aiComponent.attackRange = 50;
         // aiComponent.player = this.player; // 改为动态查找
         
-        console.log(`🤖 敌人AI设置: ${enemyNode.name}`);
-        console.log(`  - 移动速度: ${aiComponent.moveSpeed}`);
-        console.log(`  - 视野范围: ${aiComponent.sightRange}`);
-        console.log(`  - 攻击范围: ${aiComponent.attackRange}`);
         // console.log(`  - 玩家引用: ${aiComponent.player ? aiComponent.player.name : '无'}`);
         
         // 确保AI能找到玩家

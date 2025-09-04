@@ -69,21 +69,16 @@ export class GameManager extends Component {
      * 初始化游戏
      */
     private initializeGame(): void {
-        console.log(`🎮 游戏初始化开始...`);
-        
         // 生成第一张地图
         this.generateNewMap();
         
         this.isGameActive = true;
-        console.log(`✅ 游戏初始化完成`);
     }
     
     /**
      * 设置输入监听
      */
     private setupInput(): void {
-        console.log('🎮 设置输入监听...');
-        
         // 尝试双重绑定：Cocos + DOM
         // Cocos输入系统
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
@@ -99,7 +94,6 @@ export class GameManager extends Component {
             });
         }
         
-        console.log('✅ 输入监听设置完成');
     }
     
     /**
@@ -337,7 +331,6 @@ export class GameManager extends Component {
      * 生成新地图
      */
     public generateNewMap(seed?: number): void {
-        console.log(`🗺️ 开始生成新地图...`);
         
         if (!this.mapGenerator || !this.mapRenderer) {
             console.error('❌ 地图生成器或渲染器未设置');
@@ -371,16 +364,13 @@ export class GameManager extends Component {
             
             const spawnPos = this.mapGenerator.getSpawnPosition();
             this.player.setPosition(spawnPos.x, spawnPos.y, 10); // Z=10确保在地图之上
-            console.log(`👤 玩家位置设置为: (${spawnPos.x}, ${spawnPos.y}, 10)`);
             
             // 摄像机立即跟上
             if (this.cameraNode) {
                 this.cameraNode.setPosition(spawnPos.x, spawnPos.y, this.cameraNode.getPosition().z);
-                console.log(`📷 摄像机位置设置为: (${spawnPos.x}, ${spawnPos.y}, ${this.cameraNode.getPosition().z})`);
             }
         }
         
-        console.log(`✅ 新地图生成完成！按R键重新生成`);
     }
     
     /**
@@ -393,7 +383,6 @@ export class GameManager extends Component {
         let transform = this.player.getComponent(UITransform);
         if (!transform) {
             transform = this.player.addComponent(UITransform);
-            console.log('✅ 为Player添加UITransform组件');
         }
         transform.setContentSize(40, 40);
         
@@ -401,7 +390,6 @@ export class GameManager extends Component {
         let sprite = this.player.getComponent(Sprite);
         if (!sprite) {
             sprite = this.player.addComponent(Sprite);
-            console.log('✅ 为Player添加Sprite组件');
         }
         
         // 创建蓝色的Player
@@ -413,7 +401,6 @@ export class GameManager extends Component {
         // 🔧 添加战斗组件
         this.setupPlayerCombatComponents();
         
-        console.log('🎮 Player组件设置完成');
     }
     
     /**
@@ -424,7 +411,6 @@ export class GameManager extends Component {
         const spriteFrame = TextureGenerator.createPlayerTexture(40);
         sprite.spriteFrame = spriteFrame;
         
-        console.log('🧑 Player设置为人形图标');
     }
     
     /**
@@ -436,24 +422,18 @@ export class GameManager extends Component {
             return;
         }
         
-        console.log('🎮 空格键被按下，尝试攻击或交互');
         
         // 首先尝试交互（优先级更高）
         if (this.tryInteract()) {
-            console.log('💰 执行交互操作');
             return;
         }
         
         // 如果没有可交互的对象，则进行攻击
         const combatComponent = this.player.getComponent(CombatComponent);
         if (combatComponent) {
-            console.log('⚔️ 找到战斗组件，执行攻击');
-            const attackResult = combatComponent.attack();
-            console.log(`⚔️ 攻击结果: ${attackResult ? '成功' : '失败'}`);
-            console.log(`⏰ 可以攻击: ${combatComponent.canAttack}`);
+            combatComponent.attack();
         } else {
             console.error('❌ 玩家缺少CombatComponent组件');
-            console.log('🔧 尝试添加战斗组件...');
             this.setupPlayerCombatComponents();
         }
     }

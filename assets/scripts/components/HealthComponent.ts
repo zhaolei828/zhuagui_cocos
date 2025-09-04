@@ -63,6 +63,8 @@ export class HealthComponent extends Component {
      * 受到伤害
      */
     takeDamage(damage: number): boolean {
+        console.log(`🔥🔥🔥 HealthComponent.takeDamage() 被调用 - 编译验证标记：${Date.now()}`);
+        console.log(`🔥🔥🔥 当前时间戳：${new Date().toLocaleTimeString()} - 这是最新代码！`);
         if (this.isDead || this.isInvincible || damage <= 0) {
             return false;
         }

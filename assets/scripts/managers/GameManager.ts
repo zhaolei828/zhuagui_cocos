@@ -372,11 +372,22 @@ export class GameManager extends Component {
         
         // 将玩家移动到出生点
         if (this.player) {
+            // 🔧 确保玩家可见性和状态
+            this.player.active = true;
+            
             // 确保Player有必要的组件（只设置一次）
             this.forceSetupPlayer();
             
             const spawnPos = this.mapGenerator.getSpawnPosition();
             this.player.setPosition(spawnPos.x, spawnPos.y, 10); // Z=10确保在地图之上
+            console.log(`🏃 玩家移动到出生点: (${spawnPos.x}, ${spawnPos.y})`);
+            
+            // 🔧 确保Sprite可见
+            const sprite = this.player.getComponent(Sprite);
+            if (sprite) {
+                sprite.enabled = true;
+                sprite.color = new Color(255, 255, 255, 255);
+            }
             
             // 摄像机立即跟上
             if (this.cameraNode) {
@@ -655,10 +666,24 @@ export class GameManager extends Component {
      * 重新开始游戏
      */
     private restartGame(): void {
-        // 重置玩家血量
-        const healthComponent = this.player?.getComponent(HealthComponent);
-        if (healthComponent) {
-            healthComponent.resetHealth();
+        // 🔧 确保玩家节点存在并且可见
+        if (this.player) {
+            this.player.active = true; // 确保玩家节点激活
+            
+            // 重置玩家血量
+            const healthComponent = this.player.getComponent(HealthComponent);
+            if (healthComponent) {
+                healthComponent.resetHealth();
+            }
+            
+            // 🔧 确保玩家有正确的Sprite显示
+            const sprite = this.player.getComponent(Sprite);
+            if (sprite) {
+                sprite.enabled = true; // 确保Sprite组件启用
+                sprite.color = new Color(255, 255, 255, 255); // 重置颜色和透明度
+            }
+            
+            console.log('🔄 玩家状态重置完成');
         }
         
         // 重新生成地图

@@ -95,7 +95,7 @@ export class DamageNumber extends Component {
         const sideDir = (Math.random() - 0.5) * 2; // -1 到 1
         const endPos = new Vec3(
             startPos.x + sideDir * this.sideOffset,
-            startPos.y + this.floatHeight,
+            startPos.y - this.floatHeight, // 🔧 Y轴向下为正，所以减去高度让数字向上漂浮
             startPos.z
         );
         

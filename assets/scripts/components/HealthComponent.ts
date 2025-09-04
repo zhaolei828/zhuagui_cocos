@@ -1,7 +1,7 @@
 import { _decorator, Component, Node } from 'cc';
 import { AudioManager } from '../managers/AudioManager';
 import { AnimationComponent } from './AnimationComponent';
-import { DamageNumber } from './DamageNumber';
+// import { DamageNumber } from './DamageNumber'; // 🔧 已禁用
 import { LevelManager } from '../managers/LevelManager';
 
 const { ccclass, property } = _decorator;
@@ -81,9 +81,6 @@ export class HealthComponent extends Component {
         
         // 🔧 完全禁用伤害数字系统，避免错误 
         console.log(`💔 ${this.node.name} 受到 ${damage} 点伤害，剩余血量: ${this.currentHealth}/${this.maxHealth}`);
-        
-        // 临时调用来验证编译
-        console.log('🔥 HealthComponent 代码已更新并编译！');
         
         // 触发事件
         this.onDamage && this.onDamage(damage);

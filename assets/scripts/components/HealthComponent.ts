@@ -22,7 +22,7 @@ export class HealthComponent extends Component {
     isInvincible: boolean = false;
     
     @property({ tooltip: "无敌时间(秒)" })
-    invincibleDuration: number = 1.0;
+    invincibleDuration: number = 0.1; // 🔧 临时减少无敌时间便于测试
     
     // 事件回调
     public onHealthChanged: (current: number, max: number) => void = null!;
@@ -65,9 +65,12 @@ export class HealthComponent extends Component {
     takeDamage(damage: number): boolean {
         console.log(`🔥🔥🔥 HealthComponent.takeDamage() 被调用 - 编译验证标记：${Date.now()}`);
         console.log(`🔥🔥🔥 当前时间戳：${new Date().toLocaleTimeString()} - 这是最新代码！`);
+        console.log(`🔍 调试状态: isDead=${this.isDead}, isInvincible=${this.isInvincible}, damage=${damage}`);
         if (this.isDead || this.isInvincible || damage <= 0) {
+            console.log(`⚠️ takeDamage()提前返回: isDead=${this.isDead}, isInvincible=${this.isInvincible}, damage=${damage}`);
             return false;
         }
+        console.log(`✅ takeDamage()通过条件检查，继续执行...`);
         
         this._currentHealth = Math.max(0, this._currentHealth - damage);
         
@@ -116,10 +119,9 @@ export class HealthComponent extends Component {
         console.log(`🎨🎨🎨 准备调用 DamageDisplay.createDamageDisplay()`);
         
         try {
-            // 🔧 重生修复：使用父节点而不是player节点本身，避免坐标系问题
-            const parentNode = this.node.parent || this.node;
-            console.log(`🎯🎯🎯 伤害数字父节点: ${parentNode.name}, scale: ${parentNode.scale}, 玩家节点scale: ${this.node.scale}`);
-            DamageDisplay.createDamageDisplay(parentNode, damage, damageType);
+            // 🔧 位置修复：直接使用player节点，但要获取世界位置
+            console.log(`🎯🎯🎯 伤害数字目标节点: ${this.node.name}, 位置: ${this.node.position}`);
+            DamageDisplay.createDamageDisplay(this.node, damage, damageType);
             console.log(`✅✅✅ DamageDisplay.createDamageDisplay() 调用成功`);
         } catch (error) {
             console.error(`❌❌❌ DamageDisplay.createDamageDisplay() 调用失败:`, error);

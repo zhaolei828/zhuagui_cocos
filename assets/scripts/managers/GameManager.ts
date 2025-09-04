@@ -684,6 +684,11 @@ export class GameManager extends Component {
                 sprite.color = new Color(255, 255, 255, 255); // 重置颜色和透明度
             }
             
+            // 🔧 重要：重置玩家节点的变换，确保方向正确
+            this.player.setRotationFromEuler(0, 0, 0); // 重置旋转
+            this.player.setScale(1, 1, 1); // 重置缩放
+            console.log(`🔧 玩家方向重置: rotation=${this.player.eulerAngles}, scale=${this.player.scale}`);
+            
             console.log('🔄 玩家状态重置完成');
         }
         

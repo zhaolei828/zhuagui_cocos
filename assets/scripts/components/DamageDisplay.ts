@@ -168,12 +168,8 @@ export class DamageDisplay extends Component {
         const damageNode = new Node('DamageDisplay');
         parent.addChild(damageNode);
         
-        // 随机偏移
-        const offset = new Vec3(
-            (Math.random() - 0.5) * 40,
-            Math.random() * 20,
-            0
-        );
+        // 🔧 修复位置：不使用随机偏移，直接在触发位置显示
+        const offset = new Vec3(0, 0, 0); // 直接在父节点位置显示
         damageNode.setPosition(offset);
         
         const damageDisplay = damageNode.addComponent(DamageDisplay);

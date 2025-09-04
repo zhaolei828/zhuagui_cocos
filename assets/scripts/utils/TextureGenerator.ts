@@ -172,6 +172,23 @@ export class TextureGenerator {
         ctx.fillRect(size * 0.42, size * 0.7, size * 0.06, size * 0.15);
         ctx.fillRect(size * 0.52, size * 0.7, size * 0.06, size * 0.15);
         
+        // 🔧 添加方向指示器 - 头顶上方的向上箭头
+        ctx.fillStyle = '#FFFF00'; // 黄色箭头，更明显
+        ctx.beginPath();
+        // 箭头尖端
+        ctx.moveTo(size / 2, size * 0.15);
+        // 左侧
+        ctx.lineTo(size * 0.4, size * 0.25);
+        // 箭头中间凹陷
+        ctx.lineTo(size * 0.47, size * 0.25);
+        ctx.lineTo(size * 0.47, size * 0.3);
+        ctx.lineTo(size * 0.53, size * 0.3);
+        ctx.lineTo(size * 0.53, size * 0.25);
+        // 右侧
+        ctx.lineTo(size * 0.6, size * 0.25);
+        ctx.closePath();
+        ctx.fill();
+        
         return this.canvasToSpriteFrame(canvas);
     }
     

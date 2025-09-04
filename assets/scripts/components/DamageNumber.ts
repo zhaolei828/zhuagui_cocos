@@ -26,7 +26,7 @@ export class DamageNumber extends Component {
     /**
      * 设置标签组件
      */
-    private setupLabel(): void {
+    public setupLabel(): void {
         // 确保有UITransform
         if (!this.getComponent(UITransform)) {
             this.addComponent(UITransform);
@@ -146,6 +146,8 @@ export class DamageNumber extends Component {
         damageNode.setPosition(offset);
         
         const damageNumber = damageNode.addComponent(DamageNumber);
+        // 🔧 确保在使用前先设置Label
+        damageNumber.setupLabel();
         damageNumber.showDamage(damage, damageType);
         
         return damageNode;

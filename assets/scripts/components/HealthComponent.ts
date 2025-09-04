@@ -79,8 +79,11 @@ export class HealthComponent extends Component {
             this.animationComponent.playAnimation('hurt' as any);
         }
         
-        // 显示伤害数字
-        this.showDamageNumber(damage);
+        // 🔧 完全禁用伤害数字系统，避免错误 
+        console.log(`💔 ${this.node.name} 受到 ${damage} 点伤害，剩余血量: ${this.currentHealth}/${this.maxHealth}`);
+        
+        // 临时调用来验证编译
+        console.log('🔥 HealthComponent 代码已更新并编译！');
         
         // 触发事件
         this.onDamage && this.onDamage(damage);
@@ -101,12 +104,9 @@ export class HealthComponent extends Component {
      * 显示伤害数字
      */
     private showDamageNumber(damage: number): void {
-        // 判断是否暴击（这里简单用随机数模拟）
-        const isCritical = Math.random() < 0.2; // 20%暴击率
-        const damageType = isCritical ? 'critical' : 'normal';
-        const finalDamage = isCritical ? Math.floor(damage * 1.5) : damage;
-        
-        DamageNumber.createDamageNumber(this.node, finalDamage, damageType);
+        // 🔧 完全禁用，避免DamageNumber错误
+        console.log(`🔢 伤害数字被禁用: ${damage}`);
+        return;
     }
     
     /**

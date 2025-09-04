@@ -64,6 +64,7 @@ export class GameManager extends Component {
     private lastMoveDirection: Vec3 = new Vec3(1, 0, 0);
 
     start() {
+        console.log('🚀 GameManager 启动 - 代码已重新编译！'); // 🔥 编译验证标记
         this.initializeGame();
         this.setupInput();
         // Player设置已在generateNewMap中完成，无需重复

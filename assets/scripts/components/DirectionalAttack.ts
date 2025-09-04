@@ -90,8 +90,15 @@ export class DirectionalAttack extends Component {
      * 执行方向性攻击
      */
     private executeDirectionalAttack(): void {
-        if (!this.combatComponent || !this.combatComponent.canAttack) {
-            console.log('❌ 攻击冷却中或战斗组件缺失');
+        console.log('🗡️ DirectionalAttack.executeDirectionalAttack() 被调用');
+        
+        if (!this.combatComponent) {
+            console.log('❌ 没有战斗组件');
+            return;
+        }
+        
+        if (!this.combatComponent.canAttack) {
+            console.log('❌ 攻击冷却中');
             return;
         }
         

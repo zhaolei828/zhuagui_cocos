@@ -155,6 +155,7 @@ export class GameManager extends Component {
      * 按键按下事件
      */
     private onKeyDown(event: EventKeyboard): void {
+        console.log(`⌨️ 按键按下: ${event.keyCode}, 游戏激活: ${this.isGameActive}`);
         switch (event.keyCode) {
             case KeyCode.ARROW_LEFT:
             case KeyCode.KEY_A:
@@ -178,6 +179,7 @@ export class GameManager extends Component {
                 break;
             case KeyCode.SPACE:
                 // 空格键攻击或交互
+                console.log('🎮 空格键被按下');
                 this.playerAttackOrInteract();
                 break;
             case KeyCode.KEY_P:
@@ -436,9 +438,11 @@ export class GameManager extends Component {
             return;
         }
         
-        
+        console.log('🎯 开始处理玩家攻击或交互');
+
         // 首先尝试交互（优先级更高）
         if (this.tryInteract()) {
+            console.log('💰 执行交互，跳过攻击');
             return;
         }
         
@@ -548,7 +552,9 @@ export class GameManager extends Component {
         // 检查是否已经设置过
         const sprite = this.player.getComponent(Sprite);
         if (sprite && sprite.spriteFrame) {
-            console.log('🎮 Player已经设置过，跳过重复设置');
+            console.log('🎮 Player已经设置过，确保组件完整');
+            // 即使Player已经设置，也要确保有新的攻击组件
+            this.ensurePlayerComponents();
             return;
         }
         
@@ -565,6 +571,22 @@ export class GameManager extends Component {
     }
     
     /**
+     * 确保玩家有所有必要组件
+     */
+    private ensurePlayerComponents(): void {
+        if (!this.player) return;
+        
+        // 确保战斗组件
+        this.setupPlayerCombatComponents();
+        
+        // 确保方向性攻击组件
+        this.setupPlayerDirectionalAttack();
+        
+        // 确保动画组件
+        this.setupPlayerAnimation();
+    }
+    
+    /**
      * 设置玩家方向性攻击
      */
     private setupPlayerDirectionalAttack(): void {
@@ -575,9 +597,9 @@ export class GameManager extends Component {
         if (!directionalAttack) {
             directionalAttack = this.player.addComponent(DirectionalAttack);
             directionalAttack.indicatorSize = 80;
-            directionalAttack.attackAngle = 90; // 90度攻击范围
+            directionalAttack.attackAngle = 120; // 🔧 增加攻击角度
             directionalAttack.showAttackRange = true;
-            console.log('✅ 为Player添加DirectionalAttack组件');
+            console.log('✅ 为Player添加DirectionalAttack组件（120度范围）');
         }
     }
     
@@ -607,10 +629,11 @@ export class GameManager extends Component {
         if (!combatComponent) {
             combatComponent = this.player.addComponent(CombatComponent);
             combatComponent.attackDamage = 25;
-            combatComponent.attackRange = 80;
+            combatComponent.attackRange = 150; // 🔧 增加攻击范围
             combatComponent.attackCooldown = 0.5;
-            combatComponent.targetTags = ['enemy'];
-            console.log('✅ 为Player添加CombatComponent组件');
+            combatComponent.targetTags = ['Enemy']; // 🔧 修正目标标签
+            combatComponent.autoAttack = true; // 🔧 开启自动攻击
+            console.log('✅ 为Player添加CombatComponent组件（范围150，自动攻击）');
         }
     }
     

@@ -19,7 +19,7 @@ export class DamageNumber extends Component {
     
     private label: Label = null!;
     
-    start() {
+    onLoad() {
         this.setupLabel();
     }
     
@@ -27,6 +27,11 @@ export class DamageNumber extends Component {
      * 设置标签组件
      */
     private setupLabel(): void {
+        // 确保有UITransform
+        if (!this.getComponent(UITransform)) {
+            this.addComponent(UITransform);
+        }
+        
         this.label = this.getComponent(Label);
         if (!this.label) {
             this.label = this.addComponent(Label);
@@ -38,17 +43,17 @@ export class DamageNumber extends Component {
         this.label.enableOutline = true;
         this.label.outlineColor = new Color(0, 0, 0, 255);
         this.label.outlineWidth = 2;
-        
-        // 确保有UITransform
-        if (!this.getComponent(UITransform)) {
-            this.addComponent(UITransform);
-        }
     }
     
     /**
      * 显示伤害数字
      */
     public showDamage(damage: number, damageType: 'normal' | 'critical' | 'heal' = 'normal'): void {
+        // 确保Label组件存在
+        if (!this.label) {
+            this.setupLabel();
+        }
+        
         // 设置数字文本
         this.label.string = damage.toString();
         

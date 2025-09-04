@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Vec3, find } from 'cc';
+import { _decorator, Component, Node, Vec3, find, CCFloat } from 'cc';
 const { ccclass, property } = _decorator;
 
 /**
@@ -13,7 +13,7 @@ export class ParallaxBackground extends Component {
     @property([Node])
     public backgroundLayers: Node[] = [];
 
-    @property([Number])
+    @property([CCFloat])
     public layerSpeeds: number[] = [0.2, 0.5, 0.8];
 
     @property

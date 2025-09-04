@@ -1,7 +1,7 @@
 import { _decorator, Component, Node } from 'cc';
 import { AudioManager } from '../managers/AudioManager';
 import { AnimationComponent } from './AnimationComponent';
-import { DamageNumber } from './DamageNumber';
+import { DamageDisplay } from './DamageDisplay';
 import { LevelManager } from '../managers/LevelManager';
 
 const { ccclass, property } = _decorator;

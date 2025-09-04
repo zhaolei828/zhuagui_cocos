@@ -161,7 +161,9 @@ export class DamageDisplay extends Component {
      * 创建伤害显示节点
      */
     public static createDamageDisplay(parent: Node, damage: number, damageType: 'normal' | 'critical' | 'heal' = 'normal'): Node {
-        console.log(`🆕🆕🆕 创建DamageDisplay节点: ${damage}`);
+        console.log(`🆕🆕🆕 DamageDisplay.createDamageDisplay() 被调用！编译验证：${Date.now()}`);
+        console.log(`🆕🆕🆕 这是全新的DamageDisplay文件 - 证明编译成功！`);
+        console.log(`🆕🆕🆕 参数: damage=${damage}, type=${damageType}`);
         
         const damageNode = new Node('DamageDisplay');
         parent.addChild(damageNode);

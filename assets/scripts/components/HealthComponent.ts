@@ -116,7 +116,10 @@ export class HealthComponent extends Component {
         console.log(`🎨🎨🎨 准备调用 DamageDisplay.createDamageDisplay()`);
         
         try {
-            DamageDisplay.createDamageDisplay(this.node, damage, damageType);
+            // 🔧 重生修复：使用父节点而不是player节点本身，避免坐标系问题
+            const parentNode = this.node.parent || this.node;
+            console.log(`🎯🎯🎯 伤害数字父节点: ${parentNode.name}, scale: ${parentNode.scale}, 玩家节点scale: ${this.node.scale}`);
+            DamageDisplay.createDamageDisplay(parentNode, damage, damageType);
             console.log(`✅✅✅ DamageDisplay.createDamageDisplay() 调用成功`);
         } catch (error) {
             console.error(`❌❌❌ DamageDisplay.createDamageDisplay() 调用失败:`, error);

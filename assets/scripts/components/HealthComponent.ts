@@ -1,6 +1,7 @@
 import { _decorator, Component, Node } from 'cc';
 import { AudioManager } from '../managers/AudioManager';
 import { AnimationComponent } from './AnimationComponent';
+import { DamageNumber } from './DamageNumber';
 import { LevelManager } from '../managers/LevelManager';
 
 const { ccclass, property } = _decorator;
@@ -76,8 +77,10 @@ export class HealthComponent extends Component {
         // 播放受伤动画
         if (this.animationComponent) {
             this.animationComponent.playAnimation('hurt' as any);
-            this.animationComponent.playDamageNumber(damage);
         }
+        
+        // 显示伤害数字
+        this.showDamageNumber(damage);
         
         // 触发事件
         this.onDamage && this.onDamage(damage);
@@ -92,6 +95,18 @@ export class HealthComponent extends Component {
         }
         
         return true;
+    }
+    
+    /**
+     * 显示伤害数字
+     */
+    private showDamageNumber(damage: number): void {
+        // 判断是否暴击（这里简单用随机数模拟）
+        const isCritical = Math.random() < 0.2; // 20%暴击率
+        const damageType = isCritical ? 'critical' : 'normal';
+        const finalDamage = isCritical ? Math.floor(damage * 1.5) : damage;
+        
+        DamageNumber.createDamageNumber(this.node, finalDamage, damageType);
     }
     
     /**

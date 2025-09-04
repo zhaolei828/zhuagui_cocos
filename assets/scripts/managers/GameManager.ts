@@ -9,6 +9,7 @@ import { TreasureChest } from '../components/TreasureChest';
 import { AudioManager } from './AudioManager';
 import { AnimationComponent } from '../components/AnimationComponent';
 import { SaveManager } from './SaveManager';
+import { DirectionalAttack } from '../components/DirectionalAttack';
 import { LevelManager } from './LevelManager';
 
 const { ccclass, property } = _decorator;
@@ -58,6 +59,9 @@ export class GameManager extends Component {
     
     // 游戏状态
     private isGameActive: boolean = false;
+    
+    // 玩家移动方向（用于攻击方向）
+    private lastMoveDirection: Vec3 = new Vec3(1, 0, 0);
 
     start() {
         this.initializeGame();
@@ -287,6 +291,13 @@ export class GameManager extends Component {
         // 简化碰撞检测 - 暂时允许所有移动
         if (moveX !== 0 || moveY !== 0) {
             this.player.setPosition(newX, newY, currentPos.z);
+            
+            // 更新攻击方向
+            this.lastMoveDirection.set(moveX, moveY, 0).normalize();
+            const directionalAttack = this.player.getComponent(DirectionalAttack);
+            if (directionalAttack) {
+                directionalAttack.updateAttackDirection(this.lastMoveDirection);
+            }
         }
         
         // 原碰撞检测代码（暂时注释）
@@ -401,6 +412,9 @@ export class GameManager extends Component {
         // 🔧 添加战斗组件
         this.setupPlayerCombatComponents();
         
+        // 🎯 添加方向性攻击组件
+        this.setupPlayerDirectionalAttack();
+        
     }
     
     /**
@@ -428,13 +442,21 @@ export class GameManager extends Component {
             return;
         }
         
-        // 如果没有可交互的对象，则进行攻击
-        const combatComponent = this.player.getComponent(CombatComponent);
-        if (combatComponent) {
-            combatComponent.attack();
+        // 如果没有可交互的对象，则进行方向性攻击
+        const directionalAttack = this.player.getComponent(DirectionalAttack);
+        if (directionalAttack) {
+            console.log('🎯 触发方向性攻击');
+            directionalAttack.triggerAttack();
         } else {
-            console.error('❌ 玩家缺少CombatComponent组件');
-            this.setupPlayerCombatComponents();
+            // 回退到基础攻击
+            const combatComponent = this.player.getComponent(CombatComponent);
+            if (combatComponent) {
+                combatComponent.attack();
+            } else {
+                console.error('❌ 玩家缺少攻击组件');
+                this.setupPlayerCombatComponents();
+                this.setupPlayerDirectionalAttack();
+            }
         }
     }
     
@@ -540,6 +562,23 @@ export class GameManager extends Component {
         this.setupPlayerAnimation();
         
         console.log('✅ Player设置完成！');
+    }
+    
+    /**
+     * 设置玩家方向性攻击
+     */
+    private setupPlayerDirectionalAttack(): void {
+        if (!this.player) return;
+        
+        // 添加方向性攻击组件
+        let directionalAttack = this.player.getComponent(DirectionalAttack);
+        if (!directionalAttack) {
+            directionalAttack = this.player.addComponent(DirectionalAttack);
+            directionalAttack.indicatorSize = 80;
+            directionalAttack.attackAngle = 90; // 90度攻击范围
+            directionalAttack.showAttackRange = true;
+            console.log('✅ 为Player添加DirectionalAttack组件');
+        }
     }
     
     /**

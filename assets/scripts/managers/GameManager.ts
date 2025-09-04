@@ -1,6 +1,7 @@
-import { _decorator, Component, Node, Input, input, EventKeyboard, KeyCode, Vec3 } from 'cc';
+import { _decorator, Component, Node, Input, input, EventKeyboard, KeyCode, Vec3, Sprite, UITransform, Color, SpriteFrame, Texture2D } from 'cc';
 import { MapGenerator } from './MapGenerator';
 import { TileMapRenderer } from './TileMapRenderer';
+import { TextureGenerator } from '../utils/TextureGenerator';
 
 const { ccclass, property } = _decorator;
 
@@ -37,10 +38,11 @@ export class GameManager extends Component {
     
     // 游戏状态
     private isGameActive: boolean = false;
-    
+
     start() {
         this.initializeGame();
         this.setupInput();
+        // Player设置已在generateNewMap中完成，无需重复
     }
     
     /**
@@ -60,8 +62,75 @@ export class GameManager extends Component {
      * 设置输入监听
      */
     private setupInput(): void {
+        console.log('🎮 设置输入监听...');
+        
+        // 尝试双重绑定：Cocos + DOM
+        // Cocos输入系统
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
+        
+        // DOM输入系统（备用）
+        if (typeof document !== 'undefined') {
+            document.addEventListener('keydown', (e) => {
+                this.handleDOMKeyDown(e);
+            });
+            document.addEventListener('keyup', (e) => {
+                this.handleDOMKeyUp(e);
+            });
+        }
+        
+        console.log('✅ 输入监听设置完成');
+    }
+    
+    /**
+     * DOM按键按下处理
+     */
+    private handleDOMKeyDown(event: KeyboardEvent): void {
+        switch (event.code) {
+            case 'KeyA':
+            case 'ArrowLeft':
+                this.inputStates.left = true;
+                break;
+            case 'KeyD':
+            case 'ArrowRight':
+                this.inputStates.right = true;
+                break;
+            case 'KeyW':
+            case 'ArrowUp':
+                this.inputStates.up = true;
+                break;
+            case 'KeyS':
+            case 'ArrowDown':
+                this.inputStates.down = true;
+                break;
+            case 'KeyR':
+                this.generateNewMap();
+                break;
+        }
+    }
+    
+    /**
+     * DOM按键释放处理
+     */
+    private handleDOMKeyUp(event: KeyboardEvent): void {
+        switch (event.code) {
+            case 'KeyA':
+            case 'ArrowLeft':
+                this.inputStates.left = false;
+                break;
+            case 'KeyD':
+            case 'ArrowRight':
+                this.inputStates.right = false;
+                break;
+            case 'KeyW':
+            case 'ArrowUp':
+                this.inputStates.up = false;
+                break;
+            case 'KeyS':
+            case 'ArrowDown':
+                this.inputStates.down = false;
+                break;
+        }
     }
     
     /**
@@ -93,10 +162,10 @@ export class GameManager extends Component {
                 // 空格键暂停/恢复
                 this.togglePause();
                 break;
-        }
     }
-    
-    /**
+}
+
+/**
      * 按键释放事件
      */
     private onKeyUp(event: EventKeyboard): void {
@@ -142,6 +211,8 @@ export class GameManager extends Component {
         if (this.inputStates.up) moveY += 1;
         if (this.inputStates.down) moveY -= 1;
         
+        // 移动输入检测（简化日志）
+        
         // 归一化对角线移动
         if (moveX !== 0 && moveY !== 0) {
             moveX *= 0.707; // √2/2
@@ -153,7 +224,13 @@ export class GameManager extends Component {
         const newX = currentPos.x + moveX * this.playerSpeed * deltaTime;
         const newY = currentPos.y + moveY * this.playerSpeed * deltaTime;
         
-        // 检查碰撞
+        // 简化碰撞检测 - 暂时允许所有移动
+        if (moveX !== 0 || moveY !== 0) {
+            this.player.setPosition(newX, newY, currentPos.z);
+        }
+        
+        // 原碰撞检测代码（暂时注释）
+        /*
         const gridPos = this.mapRenderer.worldToGrid(new Vec3(newX, newY, 0));
         
         if (this.mapRenderer.isWalkable(gridPos.x, gridPos.y)) {
@@ -169,8 +246,9 @@ export class GameManager extends Component {
                 this.player.setPosition(currentPos.x, newY, currentPos.z);
             }
         }
+        */
     }
-    
+
     /**
      * 更新摄像机跟随
      */
@@ -208,9 +286,12 @@ export class GameManager extends Component {
         
         // 将玩家移动到出生点
         if (this.player) {
+            // 确保Player有必要的组件（只设置一次）
+            this.forceSetupPlayer();
+            
             const spawnPos = this.mapGenerator.getSpawnPosition();
-            this.player.setPosition(spawnPos);
-            console.log(`👤 玩家位置设置为: (${spawnPos.x}, ${spawnPos.y})`);
+            this.player.setPosition(spawnPos.x, spawnPos.y, 10); // Z=10确保在地图之上
+            console.log(`👤 玩家位置设置为: (${spawnPos.x}, ${spawnPos.y}, 10)`);
             
             // 摄像机立即跟上
             if (this.cameraNode) {
@@ -220,6 +301,76 @@ export class GameManager extends Component {
         }
         
         console.log(`✅ 新地图生成完成！按R键重新生成`);
+    }
+    
+    /**
+     * 设置玩家组件
+     */
+    private setupPlayer(): void {
+        if (!this.player) return;
+        
+        // 确保有UITransform组件
+        let transform = this.player.getComponent(UITransform);
+        if (!transform) {
+            transform = this.player.addComponent(UITransform);
+            console.log('✅ 为Player添加UITransform组件');
+        }
+        transform.setContentSize(40, 40);
+        
+        // 确保有Sprite组件并设置正确的SpriteFrame
+        let sprite = this.player.getComponent(Sprite);
+        if (!sprite) {
+            sprite = this.player.addComponent(Sprite);
+            console.log('✅ 为Player添加Sprite组件');
+        }
+        
+        // 创建蓝色的Player
+        this.createPlayerSpriteFrame(sprite);
+        
+        // 确保在正确的层级
+        this.player.layer = 1073741824; // DEFAULT层
+        
+        console.log('🎮 Player组件设置完成');
+    }
+    
+    /**
+     * 为Player创建SpriteFrame - 使用可识别的人形图标
+     */
+    private createPlayerSpriteFrame(sprite: Sprite): void {
+        // 使用TextureGenerator创建Player图标
+        const spriteFrame = TextureGenerator.createPlayerTexture(40);
+        sprite.spriteFrame = spriteFrame;
+        
+        console.log('🧑 Player设置为人形图标');
+    }
+    
+    /**
+     * 强制设置Player显示（只设置一次）
+     */
+    private forceSetupPlayer(): void {
+        if (!this.player) {
+            console.log('❌ Player节点未找到');
+            return;
+        }
+        
+        // 检查是否已经设置过
+        const sprite = this.player.getComponent(Sprite);
+        if (sprite && sprite.spriteFrame) {
+            console.log('🎮 Player已经设置过，跳过重复设置');
+            return;
+        }
+        
+        // 确保Player有正确的组件和显示
+        this.setupPlayer();
+        
+        // 设置Player为红色，更显眼
+        const spriteComponent = this.player.getComponent(Sprite);
+        if (spriteComponent) {
+            spriteComponent.color = Color.RED;
+            console.log('🔴 Player设置为红色');
+        }
+        
+        console.log('✅ Player设置完成！');
     }
     
     /**

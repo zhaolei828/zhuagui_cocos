@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, Prefab, instantiate, Vec3, SpriteFrame, Sprite, Color, UITransform } from 'cc';
 import { MapCell, MapCellType, MapGenerator } from './MapGenerator';
 import { SpriteUtils } from '../utils/SpriteUtils';
+import { TextureGenerator } from '../utils/TextureGenerator';
 
 const { ccclass, property } = _decorator;
 
@@ -255,11 +256,9 @@ export class TileMapRenderer extends Component {
         if (this.whiteSpriteFrame) {
             sprite.spriteFrame = this.whiteSpriteFrame;
             sprite.color = color;
-            console.log(`🎨 使用SpriteFrame设置颜色: r=${color.r} g=${color.g} b=${color.b}`);
         } else {
             // 备选方案：使用SpriteUtils
             SpriteUtils.setColorSprite(sprite, color);
-            console.log(`⚠️ 使用备选SpriteFrame方案`);
         }
         
         // 确保在正确的层级
@@ -296,7 +295,7 @@ export class TileMapRenderer extends Component {
     }
     
     /**
-     * 创建调试用的内容节点
+     * 创建调试用的内容节点 - 现在使用可识别的图标
      */
     private createDebugContentNode(contentType: string): Node {
         const node = new Node(`Content_${contentType}`);
@@ -305,32 +304,39 @@ export class TileMapRenderer extends Component {
         const sprite = node.addComponent(Sprite);
         const transform = node.addComponent(UITransform);
         
-        // 设置大小
-        transform.setContentSize(24, 24);
+        // 根据内容类型设置不同的图标和大小
+        let spriteFrame: SpriteFrame;
+        let size: number;
         
-        // 设置不同内容类型的颜色
-        let color: Color;
         switch (contentType) {
             case 'enemy':
-                color = Color.RED;
+                spriteFrame = TextureGenerator.createEnemyTexture(32);
+                sprite.color = Color.RED; // 备用情况下设置颜色
+                size = 32;
                 break;
             case 'treasure':
-                color = Color.YELLOW;
+                spriteFrame = TextureGenerator.createTreasureTexture(32);
+                sprite.color = Color.YELLOW; // 备用情况下设置颜色
+                size = 32;
                 break;
             case 'spawn':
-                color = Color.GREEN;
+                spriteFrame = TextureGenerator.createSpawnTexture(32);
+                sprite.color = Color.GREEN; // 备用情况下设置颜色
+                size = 32;
                 break;
             default:
-                color = Color.MAGENTA;
+                // 备用方案：使用原来的彩色方块
+                spriteFrame = this.whiteSpriteFrame || SpriteUtils.getWhiteSpriteFrame();
+                sprite.color = Color.MAGENTA;
+                size = 24;
         }
         
-        // 使用白色SpriteFrame作为基础
-        if (this.whiteSpriteFrame) {
-            sprite.spriteFrame = this.whiteSpriteFrame;
-            sprite.color = color;
-        } else {
-            SpriteUtils.setColorSprite(sprite, color);
-        }
+        // 设置SpriteFrame和大小
+        sprite.spriteFrame = spriteFrame;
+        transform.setContentSize(size, size);
+        
+        // 确保在正确的层级
+        node.layer = 1073741824; // DEFAULT层
         
         return node;
     }

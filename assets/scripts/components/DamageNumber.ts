@@ -19,14 +19,14 @@ export class DamageNumber extends Component {
     
     private label: Label = null!;
 
-    start() {
+    onLoad() {
         this.initializeLabel();
     }
     
     /**
      * 初始化Label组件
      */
-    private initializeLabel(): void {
+    public initializeLabel(): void {
         // 确保有UITransform
         if (!this.getComponent(UITransform)) {
             this.addComponent(UITransform);
@@ -94,7 +94,7 @@ export class DamageNumber extends Component {
         const sideDir = (Math.random() - 0.5) * 2;
         const endPos = new Vec3(
             startPos.x + sideDir * this.sideOffset,
-            startPos.y - this.floatHeight, // 🔧 向上漂浮（Y轴负值）
+            startPos.y + this.floatHeight, // 🔧 向上漂浮（Y轴正值）
             startPos.z
         );
         
@@ -143,10 +143,9 @@ export class DamageNumber extends Component {
         damageNode.setPosition(offset);
         
         const damageNumber = damageNode.addComponent(DamageNumber);
-        // 等待一帧让组件初始化完成
-        damageNumber.scheduleOnce(() => {
-            damageNumber.showDamage(damage, damageType);
-        }, 0);
+        // 立即初始化Label，然后显示伤害
+        damageNumber.initializeLabel();
+        damageNumber.showDamage(damage, damageType);
         
         return damageNode;
     }

@@ -80,8 +80,7 @@ export class HealthComponent extends Component {
         }
         
         // 显示伤害数字
-        // this.showDamageNumber(damage); // 暂时禁用
-        console.log(`💔 Player受到${damage}伤害，血量: ${this.currentHealth}/${this.maxHealth}`);
+        this.showDamageNumber(damage); // 重新启用
         console.log(`💔 ${this.node.name} 受到 ${damage} 点伤害，剩余血量: ${this.currentHealth}/${this.maxHealth}`);
         
         // 触发事件

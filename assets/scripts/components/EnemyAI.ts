@@ -131,16 +131,20 @@ export class EnemyAI extends Component {
      */
     private detectPlayer(): void {
         if (!this.player || this.currentState === AIState.DEAD) {
+            if (!this.player) {
+                console.log(`❌ ${this.node.name} 没有玩家引用`);
+            }
             return;
         }
         
         const distance = this.getDistanceToPlayer();
+        console.log(`📏 ${this.node.name} 到玩家距离: ${distance.toFixed(1)}, 视野: ${this.sightRange}`);
         
         // 在视野范围内发现玩家
         if (distance <= this.sightRange && this.currentState !== AIState.CHASE && this.currentState !== AIState.ATTACK) {
             this.target = this.player;
             this.setState(AIState.CHASE);
-            console.log(`👁️ ${this.node.name} 发现玩家，开始追击`);
+            console.log(`👁️ ${this.node.name} 发现玩家，开始追击 (距离: ${distance.toFixed(1)})`);
         }
         
         // 进入攻击范围
@@ -222,8 +226,15 @@ export class EnemyAI extends Component {
      * 攻击行为
      */
     private attackBehavior(deltaTime: number): void {
+        console.log(`⚔️ ${this.node.name} 攻击行为 - 目标: ${this.target ? this.target.name : '无'}`);
+        
         if (this.combatComponent && this.combatComponent.canAttack) {
-            this.combatComponent.attack(this.target);
+            if (this.target && this.target === this.player) {
+                console.log(`✅ ${this.node.name} 攻击玩家: ${this.target.name}`);
+                this.combatComponent.attack(this.target);
+            } else {
+                console.log(`❌ ${this.node.name} 目标不是玩家，取消攻击`);
+            }
         }
         
         // 面向目标

@@ -2,6 +2,12 @@ import { _decorator, Component, Node, Prefab, instantiate, Vec3, SpriteFrame, Sp
 import { MapCell, MapCellType, MapGenerator } from './MapGenerator';
 import { SpriteUtils } from '../utils/SpriteUtils';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { HealthComponent } from '../components/HealthComponent';
+import { CombatComponent } from '../components/CombatComponent';
+import { EnemyAI } from '../components/EnemyAI';
+import { TreasureChest } from '../components/TreasureChest';
+import { InventoryManager } from './InventoryManager';
+import { AnimationComponent } from '../components/AnimationComponent';
 
 const { ccclass, property } = _decorator;
 
@@ -48,6 +54,14 @@ export class TileMapRenderer extends Component {
     // 基础纹理资源
     @property({ type: SpriteFrame, tooltip: "白色基础纹理（用于彩色瓦片）" })
     whiteSpriteFrame: SpriteFrame = null!;
+    
+    // 玩家引用
+    @property({ type: Node, tooltip: "玩家节点引用" })
+    player: Node = null!;
+    
+    // 背包管理器引用
+    @property({ type: InventoryManager, tooltip: "背包管理器引用" })
+    inventoryManager: InventoryManager = null!;
     
     // 瓦片池
     private tilePool: Map<MapCellType, Node[]> = new Map();
@@ -313,11 +327,15 @@ export class TileMapRenderer extends Component {
                 spriteFrame = TextureGenerator.createEnemyTexture(32);
                 sprite.color = Color.RED; // 备用情况下设置颜色
                 size = 32;
+                // 为敌人添加AI组件
+                this.setupEnemyComponents(node);
                 break;
             case 'treasure':
                 spriteFrame = TextureGenerator.createTreasureTexture(32);
                 sprite.color = Color.YELLOW; // 备用情况下设置颜色
                 size = 32;
+                // 为宝箱添加交互组件
+                this.setupTreasureChest(node);
                 break;
             case 'spawn':
                 spriteFrame = TextureGenerator.createSpawnTexture(32);
@@ -339,6 +357,88 @@ export class TileMapRenderer extends Component {
         node.layer = 1073741824; // DEFAULT层
         
         return node;
+    }
+    
+    /**
+     * 为敌人设置战斗组件
+     */
+    private setupEnemyComponents(enemyNode: Node): void {
+        // 添加血量组件
+        const healthComponent = enemyNode.addComponent(HealthComponent);
+        healthComponent.maxHealth = 60;
+        healthComponent.onDeath = () => {
+            console.log(`💀 敌人 ${enemyNode.name} 死亡`);
+            // 可以在这里添加掉落道具逻辑
+        };
+        
+        // 添加战斗组件
+        const combatComponent = enemyNode.addComponent(CombatComponent);
+        combatComponent.attackDamage = 15;
+        combatComponent.attackRange = 50;
+        combatComponent.attackCooldown = 1.5;
+        combatComponent.targetTags = ['Player'];
+        combatComponent.autoAttack = false; // 🔧 禁用自动攻击，由AI控制
+        
+        // 添加AI组件
+        const aiComponent = enemyNode.addComponent(EnemyAI);
+        aiComponent.moveSpeed = 80;
+        aiComponent.sightRange = 120;
+        aiComponent.attackRange = 50;
+        // aiComponent.player = this.player; // 改为动态查找
+        
+        console.log(`🤖 敌人AI设置: ${enemyNode.name}`);
+        console.log(`  - 移动速度: ${aiComponent.moveSpeed}`);
+        console.log(`  - 视野范围: ${aiComponent.sightRange}`);
+        console.log(`  - 攻击范围: ${aiComponent.attackRange}`);
+        // console.log(`  - 玩家引用: ${aiComponent.player ? aiComponent.player.name : '无'}`);
+        
+        // 确保AI能找到玩家
+        /*
+        if (!this.player) {
+            console.error('❌ 警告：玩家节点为空，AI无法工作');
+        }
+        */
+        
+        // 添加动画组件
+        const animComponent = enemyNode.addComponent(AnimationComponent);
+        animComponent.enableAnimation = true;
+        
+        // 设置敌人标签
+        enemyNode.name = 'Enemy_' + Math.random().toString(36).substr(2, 5);
+        
+        console.log(`🤖 创建敌人: ${enemyNode.name}`);
+    }
+    
+    /**
+     * 为宝箱设置交互组件
+     */
+    private setupTreasureChest(chestNode: Node): void {
+        const treasureChest = chestNode.addComponent(TreasureChest);
+        
+        // 设置属性（使用类型断言来避免TypeScript错误）
+        (treasureChest as any).player = this.player;
+        (treasureChest as any).inventoryManager = this.inventoryManager;
+        
+        // 随机设置宝箱稀有度
+        const rand = Math.random();
+        if (rand < 0.05) {
+            (treasureChest as any).rarity = 'legendary';
+        } else if (rand < 0.15) {
+            (treasureChest as any).rarity = 'epic';
+        } else if (rand < 0.35) {
+            (treasureChest as any).rarity = 'rare';
+        } else {
+            (treasureChest as any).rarity = 'common';
+        }
+        
+        // 添加动画组件
+        const animComponent = chestNode.addComponent(AnimationComponent);
+        animComponent.enableAnimation = true;
+        
+        // 设置宝箱名称
+        chestNode.name = `treasure_chest_${Math.random().toString(36).substr(2, 5)}`;
+        
+        console.log(`💰 创建宝箱: ${chestNode.name} (稀有度: ${(treasureChest as any).rarity})`);
     }
     
     /**

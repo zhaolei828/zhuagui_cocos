@@ -382,7 +382,7 @@ export class TileMapRenderer extends Component {
         // 添加AI组件
         const aiComponent = enemyNode.addComponent(EnemyAI);
         aiComponent.moveSpeed = 80;
-        aiComponent.sightRange = 120;
+        aiComponent.sightRange = 400; // 🔧 增加视野范围，便于测试
         aiComponent.attackRange = 50;
         // aiComponent.player = this.player; // 改为动态查找
         

@@ -2,6 +2,14 @@ import { _decorator, Component, Node, Input, input, EventKeyboard, KeyCode, Vec3
 import { MapGenerator } from './MapGenerator';
 import { TileMapRenderer } from './TileMapRenderer';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { HealthComponent } from '../components/HealthComponent';
+import { CombatComponent } from '../components/CombatComponent';
+import { InventoryManager } from './InventoryManager';
+import { TreasureChest } from '../components/TreasureChest';
+import { AudioManager } from './AudioManager';
+import { AnimationComponent } from '../components/AnimationComponent';
+import { SaveManager } from './SaveManager';
+import { LevelManager } from './LevelManager';
 
 const { ccclass, property } = _decorator;
 
@@ -27,6 +35,18 @@ export class GameManager extends Component {
     
     @property({ tooltip: "玩家移动速度" })
     playerSpeed: number = 200;
+    
+    @property({ type: InventoryManager, tooltip: "背包管理器" })
+    inventoryManager: InventoryManager = null!;
+    
+    @property({ type: AudioManager, tooltip: "音频管理器" })
+    audioManager: AudioManager = null!;
+    
+    @property({ type: SaveManager, tooltip: "存档管理器" })
+    saveManager: SaveManager = null!;
+    
+    @property({ type: LevelManager, tooltip: "关卡管理器" })
+    levelManager: LevelManager = null!;
     
     // 控制状态
     private inputStates = {
@@ -159,8 +179,42 @@ export class GameManager extends Component {
                 this.generateNewMap();
                 break;
             case KeyCode.SPACE:
-                // 空格键暂停/恢复
+                // 空格键攻击或交互
+                this.playerAttackOrInteract();
+                break;
+            case KeyCode.KEY_P:
+                // P键暂停/恢复
                 this.togglePause();
+                break;
+            case KeyCode.KEY_I:
+                // I键打开背包
+                this.toggleInventory();
+                break;
+            case KeyCode.KEY_1:
+            case KeyCode.KEY_2:
+            case KeyCode.KEY_3:
+            case KeyCode.KEY_4:
+            case KeyCode.KEY_5:
+                // 数字键使用道具
+                this.useInventoryItem(event.keyCode - KeyCode.KEY_1);
+                break;
+            case KeyCode.KEY_M:
+                // M键切换音效
+                if (this.audioManager) {
+                    this.audioManager.toggleAudio();
+                }
+                break;
+            case KeyCode.KEY_F5:
+                // F5键快速存档
+                this.quickSave();
+                break;
+            case KeyCode.KEY_F9:
+                // F9键快速读档
+                this.quickLoad();
+                break;
+            case KeyCode.KEY_N:
+                // N键下一关
+                this.nextLevel();
                 break;
     }
 }
@@ -224,6 +278,18 @@ export class GameManager extends Component {
         const newX = currentPos.x + moveX * this.playerSpeed * deltaTime;
         const newY = currentPos.y + moveY * this.playerSpeed * deltaTime;
         
+        // 播放移动动画
+        const animComponent = this.player.getComponent(AnimationComponent);
+        if (animComponent && (moveX !== 0 || moveY !== 0)) {
+            if (animComponent.getCurrentAnimation() !== 'move' as any) {
+                animComponent.playAnimation('move' as any, true);
+            }
+        } else if (animComponent && moveX === 0 && moveY === 0) {
+            if (animComponent.getCurrentAnimation() === 'move' as any) {
+                animComponent.playAnimation('idle' as any, true);
+            }
+        }
+        
         // 简化碰撞检测 - 暂时允许所有移动
         if (moveX !== 0 || moveY !== 0) {
             this.player.setPosition(newX, newY, currentPos.z);
@@ -278,6 +344,20 @@ export class GameManager extends Component {
             return;
         }
         
+        // 播放背景音乐
+        if (this.audioManager) {
+            this.audioManager.playBGM('game_bgm');
+        }
+        
+        // 初始化关卡系统
+        if (this.levelManager) {
+            this.levelManager.mapGenerator = this.mapGenerator;
+            this.setupLevelCallbacks();
+            
+            // 尝试读取存档或开始第一关
+            this.initializeGameProgress();
+        }
+        
         // 生成地图数据
         this.mapGenerator.generateNewMap(seed);
         
@@ -330,6 +410,9 @@ export class GameManager extends Component {
         // 确保在正确的层级
         this.player.layer = 1073741824; // DEFAULT层
         
+        // 🔧 添加战斗组件
+        this.setupPlayerCombatComponents();
+        
         console.log('🎮 Player组件设置完成');
     }
     
@@ -342,6 +425,113 @@ export class GameManager extends Component {
         sprite.spriteFrame = spriteFrame;
         
         console.log('🧑 Player设置为人形图标');
+    }
+    
+    /**
+     * 玩家攻击或交互
+     */
+    private playerAttackOrInteract(): void {
+        if (!this.player) {
+            console.error('❌ 玩家节点不存在');
+            return;
+        }
+        
+        console.log('🎮 空格键被按下，尝试攻击或交互');
+        
+        // 首先尝试交互（优先级更高）
+        if (this.tryInteract()) {
+            console.log('💰 执行交互操作');
+            return;
+        }
+        
+        // 如果没有可交互的对象，则进行攻击
+        const combatComponent = this.player.getComponent(CombatComponent);
+        if (combatComponent) {
+            console.log('⚔️ 找到战斗组件，执行攻击');
+            const attackResult = combatComponent.attack();
+            console.log(`⚔️ 攻击结果: ${attackResult ? '成功' : '失败'}`);
+            console.log(`⏰ 可以攻击: ${combatComponent.canAttack}`);
+        } else {
+            console.error('❌ 玩家缺少CombatComponent组件');
+            console.log('🔧 尝试添加战斗组件...');
+            this.setupPlayerCombatComponents();
+        }
+    }
+    
+    /**
+     * 尝试交互
+     */
+    private tryInteract(): boolean {
+        if (!this.player) return false;
+        
+        // 寻找附近的宝箱
+        const nearbyChest = this.findNearbyTreasureChest();
+        if (nearbyChest) {
+            const chestComponent = nearbyChest.getComponent(TreasureChest);
+            if (chestComponent) {
+                return chestComponent.tryOpen(this.player);
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 寻找附近的宝箱
+     */
+    private findNearbyTreasureChest(): Node | null {
+        if (!this.mapRenderer || !this.player) return null;
+        
+        const playerPos = this.player.getPosition();
+        const interactionRange = 100;
+        
+        // 遍历地图容器中的所有子节点
+        const mapContainer = this.mapRenderer.tileContainer;
+        if (!mapContainer) return null;
+        
+        for (const child of mapContainer.children) {
+            if (child.name.includes('treasure')) {
+                const distance = child.getPosition().subtract(playerPos).length();
+                if (distance <= interactionRange) {
+                    return child;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 切换背包界面
+     */
+    private toggleInventory(): void {
+        if (!this.inventoryManager) return;
+        
+        // 这里可以显示/隐藏背包UI
+        console.log('🎒 切换背包界面');
+        
+        // 显示当前背包内容
+        const items = this.inventoryManager.getAllItems();
+        console.log('背包内容:');
+        items.forEach((slot, index) => {
+            if (slot.item) {
+                console.log(`  ${index + 1}. ${slot.item.itemData.name} x${slot.quantity}`);
+            }
+        });
+    }
+    
+    /**
+     * 使用背包中的道具
+     */
+    private useInventoryItem(slotIndex: number): void {
+        if (!this.inventoryManager) return;
+        
+        const success = this.inventoryManager.useItem(slotIndex, this.player);
+        if (success) {
+            console.log(`🎒 使用了槽位 ${slotIndex + 1} 的道具`);
+        } else {
+            console.log(`❌ 槽位 ${slotIndex + 1} 没有可用道具`);
+        }
     }
     
     /**
@@ -363,14 +553,239 @@ export class GameManager extends Component {
         // 确保Player有正确的组件和显示
         this.setupPlayer();
         
-        // 设置Player为红色，更显眼
-        const spriteComponent = this.player.getComponent(Sprite);
-        if (spriteComponent) {
-            spriteComponent.color = Color.RED;
-            console.log('🔴 Player设置为红色');
-        }
+        // 确保Player有战斗组件
+        this.setupPlayerCombatComponents();
+        
+        // 确保Player有动画组件
+        this.setupPlayerAnimation();
         
         console.log('✅ Player设置完成！');
+    }
+    
+    /**
+     * 设置玩家战斗组件
+     */
+    private setupPlayerCombatComponents(): void {
+        if (!this.player) return;
+        
+        // 添加血量组件
+        let healthComponent = this.player.getComponent(HealthComponent);
+        if (!healthComponent) {
+            healthComponent = this.player.addComponent(HealthComponent);
+            healthComponent.maxHealth = 100;
+            healthComponent.onHealthChanged = (current, max) => {
+                console.log(`❤️ 玩家血量: ${current}/${max}`);
+            };
+            healthComponent.onDeath = () => {
+                console.log('💀 玩家死亡');
+                this.handlePlayerDeath();
+            };
+            console.log('✅ 为Player添加HealthComponent组件');
+        }
+        
+        // 添加战斗组件
+        let combatComponent = this.player.getComponent(CombatComponent);
+        if (!combatComponent) {
+            combatComponent = this.player.addComponent(CombatComponent);
+            combatComponent.attackDamage = 25;
+            combatComponent.attackRange = 80;
+            combatComponent.attackCooldown = 0.5;
+            combatComponent.targetTags = ['enemy'];
+            console.log('✅ 为Player添加CombatComponent组件');
+        }
+    }
+    
+    /**
+     * 处理玩家死亡
+     */
+    private handlePlayerDeath(): void {
+        console.log('💀 游戏结束');
+        this.isGameActive = false;
+        
+        // 可以在这里添加游戏结束界面
+        this.scheduleOnce(() => {
+            console.log('🔄 重新开始游戏');
+            this.restartGame();
+        }, 3.0);
+    }
+    
+    /**
+     * 重新开始游戏
+     */
+    private restartGame(): void {
+        // 重置玩家血量
+        const healthComponent = this.player?.getComponent(HealthComponent);
+        if (healthComponent) {
+            healthComponent.resetHealth();
+        }
+        
+        // 重新生成地图
+        this.generateNewMap();
+        
+        // 重新激活游戏
+        this.isGameActive = true;
+        console.log('🎮 游戏重新开始');
+    }
+    
+    /**
+     * 快速存档
+     */
+    private quickSave(): void {
+        if (!this.saveManager) return;
+        
+        console.log('💾 执行快速存档...');
+        const success = this.saveManager.saveGame(this.player, this.inventoryManager, this.getGameProgress());
+        
+        if (success) {
+            console.log('✅ 快速存档成功');
+        } else {
+            console.log('❌ 快速存档失败');
+        }
+    }
+    
+    /**
+     * 快速读档
+     */
+    private quickLoad(): void {
+        if (!this.saveManager) return;
+        
+        console.log('📂 执行快速读档...');
+        const saveData = this.saveManager.loadGame();
+        
+        if (saveData) {
+            this.applySaveData(saveData);
+            console.log('✅ 快速读档成功');
+        } else {
+            console.log('❌ 快速读档失败或无存档');
+        }
+    }
+    
+    /**
+     * 下一关
+     */
+    private nextLevel(): void {
+        if (!this.levelManager) return;
+        
+        const currentLevel = this.levelManager.currentLevel;
+        const nextLevel = currentLevel + 1;
+        
+        if (this.levelManager.isLevelUnlocked(nextLevel)) {
+            this.levelManager.startLevel(nextLevel);
+        } else {
+            console.log(`🔒 关卡 ${nextLevel} 尚未解锁`);
+        }
+    }
+    
+    /**
+     * 获取游戏进度数据
+     */
+    private getGameProgress(): any {
+        return {
+            currentLevel: this.levelManager?.currentLevel || 1,
+            levelsCompleted: this.levelManager?.getUnlockedLevels().length - 1 || 0,
+            totalPlayTime: 0, // 这将在SaveManager中计算
+            enemiesDefeated: 0, // 可以从统计中获取
+            treasuresFound: 0,
+            deathCount: 0
+        };
+    }
+    
+    /**
+     * 应用存档数据
+     */
+    private applySaveData(saveData: any): void {
+        try {
+            // 恢复玩家状态
+            if (saveData.playerData && this.player) {
+                const healthComponent = this.player.getComponent(HealthComponent);
+                if (healthComponent) {
+                    healthComponent.resetHealth();
+                    // 可以设置具体的血量值
+                }
+                
+                // 恢复玩家位置
+                const pos = saveData.playerData.position;
+                this.player.setPosition(pos.x, pos.y, pos.z);
+            }
+            
+            // 恢复关卡进度
+            if (saveData.gameProgress && this.levelManager) {
+                this.levelManager.currentLevel = saveData.gameProgress.currentLevel;
+                // 可以恢复更多关卡数据
+            }
+            
+            // 恢复背包（这里需要InventoryManager的支持）
+            if (saveData.inventoryData && this.inventoryManager) {
+                // this.inventoryManager.loadFromSaveData(saveData.inventoryData);
+            }
+            
+            // 恢复设置
+            if (saveData.settings && this.audioManager) {
+                this.audioManager.setBGMVolume(saveData.settings.bgmVolume);
+                this.audioManager.setSFXVolume(saveData.settings.sfxVolume);
+            }
+            
+        } catch (error) {
+            console.error('❌ 应用存档数据失败:', error);
+        }
+    }
+    
+    /**
+     * 初始化游戏进度
+     */
+    private initializeGameProgress(): void {
+        if (!this.saveManager || !this.levelManager) return;
+        
+        if (this.saveManager.hasSaveData()) {
+            console.log('📂 发现存档，是否自动读取?');
+            // 这里可以显示UI让玩家选择，暂时直接读取
+            this.quickLoad();
+        } else {
+            console.log('🎯 开始新游戏，第一关');
+            this.levelManager.startLevel(1);
+        }
+    }
+    
+    /**
+     * 设置关卡回调
+     */
+    private setupLevelCallbacks(): void {
+        if (!this.levelManager) return;
+        
+        this.levelManager.onLevelStart = (level: number) => {
+            console.log(`🎯 关卡 ${level} 开始`);
+            this.generateNewMap(); // 为新关卡生成地图
+        };
+        
+        this.levelManager.onLevelComplete = (level: number, stats: any) => {
+            console.log(`🎉 恭喜通过关卡 ${level}！`);
+            this.quickSave(); // 自动存档
+        };
+        
+        this.levelManager.onLevelFailed = (level: number) => {
+            console.log(`💀 关卡 ${level} 失败`);
+            // 可以显示失败界面
+        };
+        
+        this.levelManager.onNewLevelUnlocked = (level: number) => {
+            console.log(`🔓 新关卡解锁: ${level}`);
+            // 可以播放解锁动画
+        };
+    }
+    
+    /**
+     * 设置玩家动画组件
+     */
+    private setupPlayerAnimation(): void {
+        if (!this.player) return;
+        
+        let animComponent = this.player.getComponent(AnimationComponent);
+        if (!animComponent) {
+            animComponent = this.player.addComponent(AnimationComponent);
+            animComponent.enableAnimation = true;
+            animComponent.animationSpeed = 1.2;
+            console.log('✅ 为Player添加AnimationComponent组件');
+        }
     }
     
     /**

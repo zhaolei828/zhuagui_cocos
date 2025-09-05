@@ -2,6 +2,7 @@ import { _decorator, Component, Node, Prefab, instantiate, Vec3, SpriteFrame, Sp
 import { MapCell, MapCellType, MapGenerator } from './MapGenerator';
 import { SpriteUtils } from '../utils/SpriteUtils';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { ArtResourceManager } from '../utils/ArtResourceManager';
 import { HealthComponent } from '../components/HealthComponent';
 import { CombatComponent } from '../components/CombatComponent';
 import { EnemyAI } from '../components/EnemyAI';
@@ -154,6 +155,7 @@ export class TileMapRenderer extends Component {
      * 渲染单个格子
      */
     private renderCell(cell: MapCell, x: number, y: number, cellSize: number): void {
+        
         // 跳过空格子
         if (cell.type === MapCellType.EMPTY) {
             return;
@@ -221,6 +223,7 @@ export class TileMapRenderer extends Component {
      * 从对象池获取瓦片
      */
     private getTileFromPool(cellType: MapCellType): Node | null {
+        
         const pool = this.tilePool.get(cellType);
         if (!pool || pool.length === 0) {
             // 池子空了，动态创建新的
@@ -258,17 +261,8 @@ export class TileMapRenderer extends Component {
         // 使用Sprite组件
         const sprite = node.addComponent(Sprite);
         
-        // 根据类型获取颜色并设置
-        const color = this.getColorForCellType(cellType);
-        
-        // 使用白色SpriteFrame作为基础
-        if (this.whiteSpriteFrame) {
-            sprite.spriteFrame = this.whiteSpriteFrame;
-            sprite.color = color;
-        } else {
-            // 备选方案：使用SpriteUtils
-            SpriteUtils.setColorSprite(sprite, color);
-        }
+        // 🎨 尝试异步加载瓦片美术资源
+        this.loadTileSprite(sprite, cellType);
         
         // 确保在正确的层级
         node.layer = 1073741824; // DEFAULT层
@@ -314,20 +308,22 @@ export class TileMapRenderer extends Component {
         const transform = node.addComponent(UITransform);
         
         // 根据内容类型设置不同的图标和大小
-        let spriteFrame: SpriteFrame;
+        let spriteFrame: SpriteFrame | null = null;
         let size: number;
         
         switch (contentType) {
             case 'enemy':
-                spriteFrame = TextureGenerator.createEnemyTexture(32);
-                sprite.color = Color.RED; // 备用情况下设置颜色
+                // 🎨 异步加载敌人美术资源
+                this.loadEnemySprite(sprite);
+                spriteFrame = null; // 先不设置，等异步加载完成
                 size = 32;
                 // 为敌人添加AI组件
                 this.setupEnemyComponents(node);
                 break;
             case 'treasure':
-                spriteFrame = TextureGenerator.createTreasureTexture(32);
-                sprite.color = Color.YELLOW; // 备用情况下设置颜色
+                // 🎨 异步加载宝箱美术资源
+                this.loadTreasureSprite(sprite);
+                spriteFrame = null; // 先不设置，等异步加载完成
                 size = 32;
                 // 为宝箱添加交互组件
                 this.setupTreasureChest(node);
@@ -344,14 +340,122 @@ export class TileMapRenderer extends Component {
                 size = 24;
         }
         
-        // 设置SpriteFrame和大小
-        sprite.spriteFrame = spriteFrame;
+        // 设置临时SpriteFrame和大小（异步加载的会覆盖）
+        if (spriteFrame) {
+            sprite.spriteFrame = spriteFrame;
+        }
         transform.setContentSize(size, size);
         
         // 确保在正确的层级
         node.layer = 1073741824; // DEFAULT层
         
         return node;
+    }
+    
+    /**
+     * 异步加载敌人美术资源
+     */
+    private async loadEnemySprite(sprite: Sprite): Promise<void> {
+        try {
+            console.log('🎨 尝试加载敌人美术资源...');
+            // 强制清除缓存，重新获取
+            const spriteFrame = await ArtResourceManager.getSpriteFrame('enemy');
+            if (spriteFrame) {
+                sprite.spriteFrame = spriteFrame;
+                console.log('✅ 敌人Sprite设置完成');
+            } else {
+                console.log('❌ 敌人SpriteFrame为null');
+            }
+        } catch (error) {
+            console.log('⚠️ 敌人美术资源加载失败:', error);
+        }
+    }
+    
+    /**
+     * 异步加载宝箱美术资源
+     */
+    private async loadTreasureSprite(sprite: Sprite): Promise<void> {
+        try {
+            console.log('🎨 尝试加载宝箱美术资源...');
+            const spriteFrame = await ArtResourceManager.getSpriteFrame('treasureChest');
+            if (spriteFrame) {
+                sprite.spriteFrame = spriteFrame;
+                console.log('✅ 宝箱Sprite设置完成');
+            } else {
+                console.log('❌ 宝箱SpriteFrame为null');
+            }
+        } catch (error) {
+            console.log('⚠️ 宝箱美术资源加载失败:', error);
+        }
+    }
+
+    /**
+     * 异步加载瓦片美术资源
+     */
+    private async loadTileSprite(sprite: Sprite, cellType: MapCellType): Promise<void> {
+        try {
+            const tileTypeName = this.getTileResourceName(cellType);
+            console.log(`🧱 尝试加载${tileTypeName}瓦片美术资源...`);
+            
+            const spriteFrame = await ArtResourceManager.getSpriteFrame(tileTypeName);
+            if (spriteFrame) {
+                sprite.spriteFrame = spriteFrame;
+                console.log(`✅ ${tileTypeName}瓦片Sprite设置完成`);
+            } else {
+                console.log(`⚠️ ${tileTypeName}瓦片美术资源未找到，使用程序化图标`);
+                this.setFallbackTileSprite(sprite, cellType);
+            }
+        } catch (error) {
+            console.log(`⚠️ ${this.getTileResourceName(cellType)}瓦片美术资源加载失败:`, error);
+            this.setFallbackTileSprite(sprite, cellType);
+        }
+    }
+
+    /**
+     * 获取瓦片类型对应的资源名称
+     */
+    private getTileResourceName(cellType: MapCellType): string {
+        
+        switch (cellType) {
+            case MapCellType.FLOOR:
+                return 'floor';
+            case MapCellType.WALL:
+                return 'wall';
+            case MapCellType.CORRIDOR:
+                return 'corridor';
+            case MapCellType.DOOR:
+                return 'door';
+            case MapCellType.ROOM:
+                return 'floor';  // 房间使用地板图标
+            case MapCellType.SPAWN:
+                return 'floor';  // 出生点使用地板图标
+            case MapCellType.EXIT:
+                return 'floor';  // 出口使用地板图标（后续可改为特殊图标）
+            case MapCellType.TREASURE:
+                return 'treasureChest';  // 宝箱
+            case MapCellType.ENEMY_SPAWN:
+                return 'enemy';  // 敌人刷新点
+            default:
+                console.warn(`⚠️ 未处理的瓦片类型: ${cellType} (${MapCellType[cellType]})`);
+                return 'unknown';
+        }
+    }
+
+    /**
+     * 设置瓦片的fallback图标（程序化彩色方块）
+     */
+    private setFallbackTileSprite(sprite: Sprite, cellType: MapCellType): void {
+        // 根据类型获取颜色并设置
+        const color = this.getColorForCellType(cellType);
+        
+        // 使用白色SpriteFrame作为基础
+        if (this.whiteSpriteFrame) {
+            sprite.spriteFrame = this.whiteSpriteFrame;
+            sprite.color = color;
+        } else {
+            // 备选方案：使用SpriteUtils
+            SpriteUtils.setColorSprite(sprite, color);
+        }
     }
     
     /**

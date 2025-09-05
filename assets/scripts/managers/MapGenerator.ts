@@ -99,7 +99,6 @@ export class MapGenerator extends Component {
         this.connectRooms();
         this.generateCorridors();
         this.placeContent();
-        this.renderMap();
         
         console.log(`🗺️ 地图生成完成，种子：${this.currentSeed}`);
     }
@@ -291,11 +290,15 @@ export class MapGenerator extends Component {
         let currentX = start.x;
         let currentY = start.y;
         
+        // 记录路径以便后续放置门
+        const corridorPath: {x: number, y: number}[] = [];
+        
         // 水平移动
         while (currentX !== end.x) {
             if (this.isValidPosition(currentX, currentY)) {
                 if (this.mapData[currentY][currentX].type === MapCellType.WALL) {
                     this.mapData[currentY][currentX].type = MapCellType.CORRIDOR;
+                    corridorPath.push({x: currentX, y: currentY});
                 }
             }
             currentX += currentX < end.x ? 1 : -1;
@@ -306,9 +309,82 @@ export class MapGenerator extends Component {
             if (this.isValidPosition(currentX, currentY)) {
                 if (this.mapData[currentY][currentX].type === MapCellType.WALL) {
                     this.mapData[currentY][currentX].type = MapCellType.CORRIDOR;
+                    corridorPath.push({x: currentX, y: currentY});
                 }
             }
             currentY += currentY < end.y ? 1 : -1;
+        }
+        
+        // 🚪 在房间入口处放置门
+        this.placeDoors(room1, room2, corridorPath);
+    }
+    
+    /**
+     * 在房间入口处放置门
+     */
+    private placeDoors(room1: Room, room2: Room, corridorPath: {x: number, y: number}[]): void {
+        // 为房间1找到最近的走廊入口点
+        const door1 = this.findRoomEntrance(room1, corridorPath);
+        if (door1) {
+            this.placeDoor(door1.x, door1.y);
+        }
+        
+        // 为房间2找到最近的走廊入口点
+        const door2 = this.findRoomEntrance(room2, corridorPath);
+        if (door2) {
+            this.placeDoor(door2.x, door2.y);
+        }
+    }
+    
+    /**
+     * 找到房间的入口点
+     */
+    private findRoomEntrance(room: Room, corridorPath: {x: number, y: number}[]): {x: number, y: number} | null {
+        // 简化逻辑：直接在房间边缘找一个合适的位置放门
+        // 检查房间的四条边
+        
+        // 上边
+        for (let x = room.x + 1; x < room.x + room.width - 1; x++) {
+            const y = room.y;
+            if (this.isValidPosition(x, y - 1) && this.mapData[y - 1][x].type === MapCellType.CORRIDOR) {
+                return {x, y};
+            }
+        }
+        
+        // 下边
+        for (let x = room.x + 1; x < room.x + room.width - 1; x++) {
+            const y = room.y + room.height - 1;
+            if (this.isValidPosition(x, y + 1) && this.mapData[y + 1][x].type === MapCellType.CORRIDOR) {
+                return {x, y};
+            }
+        }
+        
+        // 左边
+        for (let y = room.y + 1; y < room.y + room.height - 1; y++) {
+            const x = room.x;
+            if (this.isValidPosition(x - 1, y) && this.mapData[y][x - 1].type === MapCellType.CORRIDOR) {
+                return {x, y};
+            }
+        }
+        
+        // 右边
+        for (let y = room.y + 1; y < room.y + room.height - 1; y++) {
+            const x = room.x + room.width - 1;
+            if (this.isValidPosition(x + 1, y) && this.mapData[y][x + 1].type === MapCellType.CORRIDOR) {
+                return {x, y};
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 在指定位置放置门
+     */
+    private placeDoor(x: number, y: number): void {
+        if (this.isValidPosition(x, y)) {
+            this.mapData[y][x].type = MapCellType.DOOR;
+            console.log(`🚪 在位置 (${x}, ${y}) 放置门`);
         }
     }
     
@@ -383,44 +459,6 @@ export class MapGenerator extends Component {
         }
     }
     
-    /**
-     * 渲染地图到场景
-     */
-    private renderMap(): void {
-        if (!this.mapRoot) return;
-        
-        // 清除现有子节点
-        this.mapRoot.removeAllChildren();
-        
-        // 遍历地图数据并创建相应的视觉元素
-        for (let y = 0; y < this.mapHeight; y++) {
-            for (let x = 0; x < this.mapWidth; x++) {
-                const cell = this.mapData[y][x];
-                this.createCellVisual(cell, x, y);
-            }
-        }
-        
-        console.log(`🎨 地图渲染完成`);
-    }
-    
-    /**
-     * 创建单个格子的视觉元素
-     */
-    private createCellVisual(cell: MapCell, x: number, y: number): void {
-        // 这里可以根据cell.type创建不同的视觉元素
-        // 暂时只打印到控制台，实际实现时需要创建相应的预制体
-        
-        const worldX = x * this.cellSize;
-        const worldY = y * this.cellSize;
-        
-        // TODO: 根据MapCellType创建相应的Prefab实例
-        // 例如：
-        // - WALL: 墙壁精灵
-        // - FLOOR: 地板精灵  
-        // - ENEMY_SPAWN: 敌人预制体
-        // - TREASURE: 宝箱预制体
-        // 等等...
-    }
     
     // 工具方法
     
@@ -488,6 +526,7 @@ export class MapGenerator extends Component {
      * 获取地图数据（供其他系统使用）
      */
     public getMapData(): MapCell[][] {
+        
         return this.mapData;
     }
 }

@@ -2,6 +2,7 @@ import { _decorator, Component, Node, Input, input, EventKeyboard, KeyCode, Vec3
 import { MapGenerator } from './MapGenerator';
 import { TileMapRenderer } from './TileMapRenderer';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { ArtResourceManager } from '../utils/ArtResourceManager';
 import { HealthComponent } from '../components/HealthComponent';
 import { CombatComponent } from '../components/CombatComponent';
 import { InventoryManager } from './InventoryManager';
@@ -10,7 +11,10 @@ import { AudioManager } from './AudioManager';
 import { AnimationComponent } from '../components/AnimationComponent';
 import { SaveManager } from './SaveManager';
 import { DirectionalAttack } from '../components/DirectionalAttack';
+import { AutoAttackComponent } from '../components/AutoAttackComponent';
 import { LevelManager } from './LevelManager';
+import { EquipmentManager } from '../components/EquipmentManager';
+import { ArtResourcePreloader } from '../utils/ArtResourcePreloader';
 
 const { ccclass, property } = _decorator;
 
@@ -37,17 +41,24 @@ export class GameManager extends Component {
     @property({ tooltip: "玩家移动速度" })
     playerSpeed: number = 200;
     
-    @property({ type: InventoryManager, tooltip: "背包管理器" })
+    // 🔮 未来功能模块 - 待实现
+    @property({ type: InventoryManager, tooltip: "背包管理器 (未实现)" })
     inventoryManager: InventoryManager = null!;
     
-    @property({ type: AudioManager, tooltip: "音频管理器" })
+    @property({ type: AudioManager, tooltip: "音频管理器 (未实现)" })
     audioManager: AudioManager = null!;
     
-    @property({ type: SaveManager, tooltip: "存档管理器" })
+    @property({ type: SaveManager, tooltip: "存档管理器 (未实现)" })
     saveManager: SaveManager = null!;
     
-    @property({ type: LevelManager, tooltip: "关卡管理器" })
+    @property({ type: EquipmentManager, tooltip: "装备管理器" })
+    equipmentManager: EquipmentManager = null!;
+    
+    @property({ type: LevelManager, tooltip: "关卡管理器 (未实现)" })
     levelManager: LevelManager = null!;
+    
+    @property({ type: ArtResourcePreloader, tooltip: "美术资源预加载器" })
+    artResourcePreloader: ArtResourcePreloader = null!
     
     // 控制状态
     private inputStates = {
@@ -63,8 +74,14 @@ export class GameManager extends Component {
     // 玩家移动方向（用于攻击方向）
     private lastMoveDirection: Vec3 = new Vec3(1, 0, 0);
 
-    start() {
+    async start() {
         console.log('🚀 GameManager 启动 - 代码已重新编译！'); // 🔥 编译验证标记
+        
+        // 🎨 初始化美术资源管理器
+        console.log('🎨 初始化美术资源管理器...');
+        await ArtResourceManager.initialize();
+        console.log('✅ 美术资源管理器初始化完成');
+        
         this.initializeGame();
         this.setupInput();
         // Player设置已在generateNewMap中完成，无需重复
@@ -123,6 +140,7 @@ export class GameManager extends Component {
                 this.inputStates.down = true;
                 break;
             case 'KeyR':
+                console.log('🎮 DOM-R键被按下，重新生成地图');
                 this.generateNewMap();
                 break;
         }
@@ -176,6 +194,7 @@ export class GameManager extends Component {
                 break;
             case KeyCode.KEY_R:
                 // R键重新生成地图
+                console.log('🎮 R键被按下，重新生成地图');
                 this.generateNewMap();
                 break;
             case KeyCode.SPACE:
@@ -186,6 +205,14 @@ export class GameManager extends Component {
             case KeyCode.KEY_P:
                 // P键暂停/恢复
                 this.togglePause();
+                break;
+            case KeyCode.KEY_E:
+                // E键测试装备武器
+                this.testEquipWeapon();
+                break;
+            case KeyCode.KEY_Q:
+                // Q键测试装备护甲
+                this.testEquipArmor();
                 break;
             case KeyCode.KEY_I:
                 // I键打开背包
@@ -417,7 +444,7 @@ export class GameManager extends Component {
             sprite = this.player.addComponent(Sprite);
         }
         
-        // 创建蓝色的Player
+        // 创建玩家Sprite（异步）
         this.createPlayerSpriteFrame(sprite);
         
         // 确保在正确的层级
@@ -432,13 +459,22 @@ export class GameManager extends Component {
     }
     
     /**
-     * 为Player创建SpriteFrame - 使用可识别的人形图标
+     * 为Player创建SpriteFrame - 优先使用美术资源，fallback到程序化图标
      */
-    private createPlayerSpriteFrame(sprite: Sprite): void {
-        // 使用TextureGenerator创建Player图标
-        const spriteFrame = TextureGenerator.createPlayerTexture(40);
-        sprite.spriteFrame = spriteFrame;
-        
+    private async createPlayerSpriteFrame(sprite: Sprite): Promise<void> {
+        try {
+            // 🎨 尝试使用美术资源
+            console.log('🎨 尝试加载玩家美术资源...');
+            const spriteFrame = await ArtResourceManager.getSpriteFrame('player');
+            sprite.spriteFrame = spriteFrame;
+            console.log('✅ 使用玩家美术资源');
+        } catch (error) {
+            // 🔧 fallback到程序化图标
+            console.log('⚠️ 美术资源加载失败，使用程序化图标:', error);
+            const spriteFrame = TextureGenerator.createPlayerTexture(40);
+            sprite.spriteFrame = spriteFrame;
+            console.log('✅ 使用程序化玩家图标');
+        }
     }
     
     /**
@@ -458,7 +494,17 @@ export class GameManager extends Component {
             return;
         }
         
-        // 如果没有可交互的对象，则进行方向性攻击
+        // 检查自动攻击组件
+        const autoAttackComponent = this.player.getComponent(AutoAttackComponent);
+        if (autoAttackComponent) {
+            // 如果自动攻击组件存在，空格键切换自动攻击开关
+            const currentState = autoAttackComponent.enableAutoAttack;
+            autoAttackComponent.setAutoAttack(!currentState);
+            console.log(`⚔️ 自动攻击${!currentState ? '开启' : '关闭'}`);
+            return;
+        }
+        
+        // 如果没有自动攻击组件，使用原有的手动攻击逻辑
         const directionalAttack = this.player.getComponent(DirectionalAttack);
         if (directionalAttack) {
             console.log('🎯 触发方向性攻击');
@@ -644,8 +690,18 @@ export class GameManager extends Component {
             combatComponent.attackRange = 150; // 🔧 增加攻击范围
             combatComponent.attackCooldown = 0.5;
             combatComponent.targetTags = ['Enemy']; // 🔧 修正目标标签
-            combatComponent.autoAttack = true; // 🔧 开启自动攻击
-            console.log('✅ 为Player添加CombatComponent组件（范围150，自动攻击）');
+            combatComponent.autoAttack = false; // 🔧 关闭原有自动攻击，使用新的AutoAttack组件
+            console.log('✅ 为Player添加CombatComponent组件（范围150）');
+        }
+        
+        // 添加智能自动攻击组件
+        let autoAttackComponent = this.player.getComponent(AutoAttackComponent);
+        if (!autoAttackComponent) {
+            autoAttackComponent = this.player.addComponent(AutoAttackComponent);
+            autoAttackComponent.attackRange = 150;
+            autoAttackComponent.attackInterval = 0.8;
+            autoAttackComponent.enableAutoAttack = true;
+            console.log('✅ 为Player添加AutoAttackComponent组件（智能自动攻击）');
         }
     }
     
@@ -905,6 +961,49 @@ export class GameManager extends Component {
         };
     }
     
+    /**
+     * 测试装备武器 (E键)
+     */
+    private testEquipWeapon(): void {
+        if (!this.equipmentManager) {
+            console.warn('⚠️ 装备管理器未配置');
+            return;
+        }
+        
+        console.log('⚔️ 测试装备武器...');
+        const testWeapon = EquipmentManager.createTestWeapon();
+        const success = this.equipmentManager.equipWeapon(testWeapon);
+        
+        if (success) {
+            console.log('✅ 武器装备成功！查看攻击力加成。');
+            // 显示当前装备信息
+            const info = this.equipmentManager.getEquipmentInfo();
+            console.log(`📊 当前装备: 武器加成+${info.totalAttackBonus}, 防御加成+${info.totalDefenseBonus}`);
+        }
+    }
+    
+    /**
+     * 测试装备护甲 (Q键)
+     */
+    private testEquipArmor(): void {
+        if (!this.equipmentManager) {
+            console.warn('⚠️ 装备管理器未配置');
+            return;
+        }
+        
+        console.log('🛡️ 测试装备护甲...');
+        const testArmor = EquipmentManager.createTestArmor();
+        const success = this.equipmentManager.equipArmor(testArmor);
+        
+        if (success) {
+            console.log('✅ 护甲装备成功！查看防御力加成。');
+            // 显示当前装备信息
+            const info = this.equipmentManager.getEquipmentInfo();
+            console.log(`📊 当前装备: 武器加成+${info.totalAttackBonus}, 防御加成+${info.totalDefenseBonus}`);
+        }
+    }
+
+
     onDestroy() {
         // 清理输入监听
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);

@@ -11,7 +11,7 @@ const { ccclass, property } = _decorator;
 @ccclass('CombatComponent')
 export class CombatComponent extends Component {
     
-    @property({ tooltip: "攻击力" })
+    @property({ tooltip: "基础攻击力" })
     attackDamage: number = 20;
     
     @property({ tooltip: "攻击范围" })
@@ -25,6 +25,9 @@ export class CombatComponent extends Component {
     
     @property({ tooltip: "自动攻击" })
     autoAttack: boolean = false;
+    
+    // 装备加成
+    private weaponAttackBonus: number = 0;
     
     private lastAttackTime: number = 0;
     private healthComponent: HealthComponent = null!;
@@ -156,6 +159,13 @@ export class CombatComponent extends Component {
     }
     
     /**
+     * 获取总攻击力（基础攻击力 + 装备加成）
+     */
+    public getTotalAttackDamage(): number {
+        return this.attackDamage + this.weaponAttackBonus;
+    }
+    
+    /**
      * 对目标造成伤害
      */
     private dealDamage(target: Node): boolean {
@@ -164,9 +174,12 @@ export class CombatComponent extends Component {
             return false;
         }
         
-        const success = targetHealth.takeDamage(this.attackDamage);
+        const totalDamage = this.getTotalAttackDamage();
+        const success = targetHealth.takeDamage(totalDamage);
         if (success) {
             this.lastAttackTime = Date.now() / 1000;
+            
+            console.log(`⚔️ 攻击伤害: ${totalDamage} (基础: ${this.attackDamage} + 装备: ${this.weaponAttackBonus})`);
             
             // 播放攻击音效
             AudioManager.playSFX('attack');
@@ -212,5 +225,32 @@ export class CombatComponent extends Component {
         
         // 检查目标标签
         return this.targetTags.some(tag => target.name.includes(tag));
+    }
+    
+    /**
+     * 添加武器攻击力加成
+     */
+    public addAttackBonus(bonus: number): void {
+        this.weaponAttackBonus += bonus;
+        console.log(`⚔️ 添加攻击力加成: +${bonus}, 当前总加成: ${this.weaponAttackBonus}`);
+    }
+    
+    /**
+     * 移除武器攻击力加成
+     */
+    public removeAttackBonus(bonus: number): void {
+        this.weaponAttackBonus = Math.max(0, this.weaponAttackBonus - bonus);
+        console.log(`⚔️ 移除攻击力加成: -${bonus}, 当前总加成: ${this.weaponAttackBonus}`);
+    }
+    
+    /**
+     * 获取装备加成信息
+     */
+    public getAttackBonusInfo(): { base: number, bonus: number, total: number } {
+        return {
+            base: this.attackDamage,
+            bonus: this.weaponAttackBonus,
+            total: this.getTotalAttackDamage()
+        };
     }
 }

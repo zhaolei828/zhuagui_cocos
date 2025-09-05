@@ -18,11 +18,17 @@ export class HealthComponent extends Component {
     @property({ tooltip: "当前生命值" })
     private _currentHealth: number = 100;
     
+    @property({ tooltip: "基础防御力" })
+    baseDefense: number = 0;
+    
     @property({ tooltip: "是否无敌" })
     isInvincible: boolean = false;
     
     @property({ tooltip: "无敌时间(秒)" })
     invincibleDuration: number = 0.1; // 🔧 临时减少无敌时间便于测试
+    
+    // 装备加成
+    private armorDefenseBonus: number = 0;
     
     // 事件回调
     public onHealthChanged: (current: number, max: number) => void = null!;
@@ -42,6 +48,13 @@ export class HealthComponent extends Component {
     
     get isDead(): boolean {
         return this._currentHealth <= 0;
+    }
+    
+    /**
+     * 获取总防御力（基础防御力 + 装备加成）
+     */
+    public getTotalDefense(): number {
+        return this.baseDefense + this.armorDefenseBonus;
     }
     
     start() {
@@ -72,9 +85,14 @@ export class HealthComponent extends Component {
         }
         console.log(`✅ takeDamage()通过条件检查，继续执行...`);
         
-        this._currentHealth = Math.max(0, this._currentHealth - damage);
+        // 🛡️ 计算防御力减免
+        const totalDefense = this.getTotalDefense();
+        const actualDamage = Math.max(1, damage - totalDefense); // 最少造成1点伤害
         
-        console.log(`💔 ${this.node.name} 受到 ${damage} 点伤害，剩余血量: ${this._currentHealth}/${this.maxHealth}`);
+        this._currentHealth = Math.max(0, this._currentHealth - actualDamage);
+        
+        console.log(`🛡️ 防御计算: 原始伤害=${damage}, 防御力=${totalDefense}, 实际伤害=${actualDamage}`);
+        console.log(`💔 ${this.node.name} 受到 ${actualDamage} 点伤害，剩余血量: ${this._currentHealth}/${this.maxHealth}`);
         
         // 播放受伤音效
         AudioManager.playSFX('hurt');
@@ -86,12 +104,11 @@ export class HealthComponent extends Component {
         
         // 显示伤害数字
         console.log(`🎯🎯🎯 即将调用showDamageNumber() - 验证编译状态`);
-        this.showDamageNumber(damage); // 重新启用
+        this.showDamageNumber(actualDamage); // 显示实际伤害
         console.log(`✅✅✅ showDamageNumber()调用完成`);
-        console.log(`💔 ${this.node.name} 受到 ${damage} 点伤害，剩余血量: ${this.currentHealth}/${this.maxHealth}`);
         
         // 触发事件
-        this.onDamage && this.onDamage(damage);
+        this.onDamage && this.onDamage(actualDamage);
         this.onHealthChanged && this.onHealthChanged(this._currentHealth, this.maxHealth);
         
         // 设置无敌时间
@@ -187,5 +204,32 @@ export class HealthComponent extends Component {
         }
         
         this.onDeath && this.onDeath();
+    }
+    
+    /**
+     * 添加护甲防御力加成
+     */
+    public addDefenseBonus(bonus: number): void {
+        this.armorDefenseBonus += bonus;
+        console.log(`🛡️ 添加防御力加成: +${bonus}, 当前总防御: ${this.getTotalDefense()}`);
+    }
+    
+    /**
+     * 移除护甲防御力加成
+     */
+    public removeDefenseBonus(bonus: number): void {
+        this.armorDefenseBonus = Math.max(0, this.armorDefenseBonus - bonus);
+        console.log(`🛡️ 移除防御力加成: -${bonus}, 当前总防御: ${this.getTotalDefense()}`);
+    }
+    
+    /**
+     * 获取防御力信息
+     */
+    public getDefenseInfo(): { base: number, bonus: number, total: number } {
+        return {
+            base: this.baseDefense,
+            bonus: this.armorDefenseBonus,
+            total: this.getTotalDefense()
+        };
     }
 }
